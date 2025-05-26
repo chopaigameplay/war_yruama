@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Login do Jogo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen flex items-center justify-center">
+    <!-- Botão de Logout -->
+    {% if 'user_id' in session %}
+    <div class="absolute top-4 right-4">
+        <a href="{{ url_for('logout') }}" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition duration-200">Sair</a>
+    </div>
+    {% endif %}
+    
+    <div class="container mx-auto p-6 max-w-md bg-gray-800 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center text-yellow-400">Bem-vindo ao Jogo</h1>
+        
+        <!-- Seção de Login -->
+        <div id="login" class="mb-6">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-100">Entrar</h2>
+            <form action="{{ url_for('login') }}" method="POST">
+                <input type="text" name="username" placeholder="Usuário" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="password" name="password" placeholder="Senha" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <label class="flex items-center mb-3">
+                    <input type="checkbox" name="remember" class="mr-2">
+                    <span class="text-gray-300">Lembrar-me</span>
+                </label>
+                <button type="submit" class="bg-yellow-500 text-white p-3 w-full rounded hover:bg-yellow-600 transition duration-200">Entrar</button>
+            </form>
+            <a href="{{ url_for('forgot_password') }}" class="text-yellow-400 hover:underline block mt-2 text-center">Esqueceu a senha?</a>
+        </div>
+        
+        <!-- Seção de Registro -->
+        <div id="register">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-100">Registrar</h2>
+            <form action="{{ url_for('register') }}" method="POST">
+                <input type="text" name="username" placeholder="Usuário" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="email" name="email" placeholder="Email" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="password" name="password" placeholder="Senha" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="password" name="confirm_password" placeholder="Confirmar Senha" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <select name="clan" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                    <option value="" class="bg-gray-700">Selecione um Clã</option>
+                    <option value="Combate" class="bg-gray-700">Combate</option>
+                    <option value="Investigação" class="bg-gray-700">Investigação</option>
+                    <option value="Agricultura" class="bg-gray-700">Agricultura</option>
+                    <option value="Comércio" class="bg-gray-700">Comércio</option>
+                    <option value="Naval" class="bg-gray-700">Naval</option>
+                </select>
+                <button type="submit" class="bg-yellow-500 text-white p-3 w-full rounded hover:bg-yellow-600 transition duration-200">Registrar</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
