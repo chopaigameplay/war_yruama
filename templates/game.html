@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Jogo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function formatTime(seconds) {
+            if (seconds <= 0) return "Pronto";
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes}m ${secs}s`;
+        }
+        function updateTimers() {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timers = document.querySelectorAll('[data-upgrade-time]');
+            timers.forEach(timer => {
+                let timeLeft = parseInt(timer.dataset.upgradeTime) - currentTime;
+                timer.textContent = formatTime(timeLeft);
+            });
+            const attackTimers = document.querySelectorAll('[data-attack-time]');
+            attackTimers.forEach(timer => {
+                let timeLeft = parseInt(timer.dataset.attackTime) - currentTime;
+                timer.textContent = formatTime(timeLeft);
+            });
+            setTimeout(updateTimers, 1000);
+        }
+        function updateResources() {
+            fetch('/game_resources')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('wood').textContent = data.wood;
+                    document.getElementById('stone').textContent = data.stone;
+                    document.getElementById('silver').textContent = data.silver;
+                    document.getElementById('food').textContent = data.food;
+                    document.getElementById('max-wood').textContent = data.max_wood;
+                    document.getElementById('max-stone').textContent = data.max_stone;
+                    document.getElementById('max-silver').textContent = data.max_silver;
+                    document.getElementById('max-food').textContent = data.max_food;
+                });
+        }
+        function upgrade(building) {
+            fetch('/upgrade', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({building: building})
+            }).then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+        function trainUnit(unitType) {
+            const quantity = document.getElementById(`quantity-${unitType}`).value;
+            fetch('/train_units', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({unit_type: unitType, quantity: quantity})
+            }).then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+        function openExploreModal(zoneId, zoneName, difficulty, lootWood, lootStone, lootSilver, lootFood) {
+            document.getElementById('explore-modal').classList.remove('hidden');
+            document.getElementById('explore-zone-name').textContent = zoneName;
+            document.getElementById('explore-difficulty').textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+            document.getElementById('explore-loot').textContent = `${lootWood} Madeira, ${lootStone} Pedra, ${lootSilver} Prata, ${lootFood} Alimento`;
+            document.getElementById('explore-zone-id').value = zoneId;
+        }
+        function closeExploreModal() {
+            document.getElementById('explore-modal').classList.add('hidden');
+        }
+        function exploreZone() {
+            const zoneId = document.getElementById('explore-zone-id').value;
+            const quantity = document.getElementById('explore-quantity').value;
+            fetch('/explore', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({zone_id: zoneId, quantity: quantity})
+            }).then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                closeExploreModal();
+                location.reload();
+            });
+        }
+        // Iniciar atualizações automáticas
+        window.onload = function() {
+            updateTimers();
+            setInterval(updateResources, 5000); // Atualiza a cada 5 segundos
+        };
+    </script>
+    <style>
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .city-point {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .city-point:hover {
+            transform: scale(2.5);
+        }
+        .city-point.player {
+            background-image: url('/static/player_icon.png');
+            background-size: cover;
+            
+        }
+        .city-point.other {
+            background-image: url('/static/other_icon.png');
+            background-size: cover;
+            
+        }
+        .city-point.exploration {
+            background-image: url('/static/exploration_icon.png');
+            background-size: cover;
+            
+        }
+        .city-point:hover::after {
+            content: attr(data-name);
+            position: absolute;
+            top: -2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen" onload="updateTimers()">
+    <!-- Botão de Logout -->
+    <div class="absolute top-4 right-4">
+        <a href="{{ url_for('logout') }}" class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition duration-200">Sair</a>
+    </div>
+    
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-yellow-400">Cidade de {{ username }}</h1>
+        
+        <!-- Recursos -->
+        <div id="resources" class="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-3 text-gray-100">Recursos</h2>
+            <p class="text-gray-300">Madeira: <span id="wood">{{ wood }}</span> / <span id="max-wood">{{ max_wood }}</span></p>
+            <p class="text-gray-300">Pedra: <span id="stone">{{ stone }}</span> / <span id="max-stone">{{ max_stone }}</span></p>
+            <p class="text-gray-300">Prata: <span id="silver">{{ silver }}</span> / <span id="max-silver">{{ max_silver }}</span></p>
+            <p class="text-gray-300">Alimento: <span id="food">{{ food }}</span> / <span id="max-food">{{ max_food }}</span></p>
+        </div>
+        
+        <!-- Construções -->
+        <div id="buildings" class="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-3 text-gray-100">Construções</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-600">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="border border-gray-600 p-3 text-gray-200">Construção</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Nível</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Custo de Melhoria</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Tempo Restante</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in buildings %}
+                        <tr class="hover:bg-gray-700">
+                            <td class="border border-gray-600 p-3">{{ b.name }}</td>
+                            <td class="border border-gray-600 p-3">{{ b.level }}</td>
+                            <td class="border border-gray-600 p-3">{{ b.cost.wood }} Madeira, {{ b.cost.stone }} Pedra, {{ b.cost.silver }} Prata</td>
+                            <td class="border border-gray-600 p-3" data-upgrade-time="{{ b.upgrade_time }}">{{ b.upgrade_time - current_time }}</td>
+                            <td class="border border-gray-600 p-3">
+                                <button onclick="upgrade('{{ upgrade_costs_keys[loop.index0] }}')" 
+                                        class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition duration-200" 
+                                        {% if b.upgrade_time > current_time %}disabled{% endif %}>Melhorar</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Unidades -->
+        <div id="units" class="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-3 text-gray-100">Unidades</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-600">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="border border-gray-600 p-3 text-gray-200">Tipo</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Quantidade</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Ataque</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Defesa</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Deslocamento</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Custo Alimento</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Custo Casa</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Nível do Quartel</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in units %}
+                        <tr class="hover:bg-gray-700">
+                            <td class="border border-gray-600 p-3">{{ u.type }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.quantity }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.attack }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.defense }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.movement }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.food_cost }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.house_cost }}</td>
+                            <td class="border border-gray-600 p-3">{{ u.barracks_level }}</td>
+                            <td class="border border-gray-600 p-3 flex items-center space-x-2">
+                                <input type="number" id="quantity-{{ u.type }}" placeholder="Quantidade" class="border border-gray-600 bg-gray-700 text-gray-200 p-2 rounded w-32 focus:outline-none focus:ring-2 focus:ring-yellow-500" min="1">
+                                <button onclick="trainUnit('{{ u.type }}')" 
+                                        class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition duration-200" 
+                                        {% if u.barracks_level > buildings[4].level %}disabled{% endif %}>Treinar</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Mapa do Jogo -->
+        <div id="attack" class="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-3 text-gray-100">Mapa do Jogo</h2>
+            <div class="map-container" style="background-image: url('/static/game_map.jpg');">
+                <!-- Ponto do jogador atual -->
+                <div class="city-point player" style="left: {{ player_pos_x }}%; top: {{ player_pos_y }}%;" 
+                     data-name="{{ username }}" onclick="alert('Esta é a sua cidade: {{ username }}')"></div>
+                <!-- Pontos dos outros jogadores -->
+                {% for u in users %}
+                <a href="{{ url_for('attack', target=u[1]) }}">
+                    <div class="city-point other" style="left: {{ u[2] }}%; top: {{ u[3] }}%;" data-name="{{ u[1] }}"></div>
+                </a>
+                {% endfor %}
+                <!-- Pontos de exploração -->
+                {% for zone in exploration_zones %}
+                <div class="city-point exploration" 
+                     style="left: {{ zone.pos_x }}%; top: {{ zone.pos_y }}%;" 
+                     data-name="{{ zone.name }} ({{ zone.difficulty }})"
+                     onclick="openExploreModal({{ zone.zone_id }}, '{{ zone.name }}', '{{ zone.difficulty }}', {{ zone.loot.wood }}, {{ zone.loot.stone }}, {{ zone.loot.silver }}, {{ zone.loot.food }})"></div>
+                {% endfor %}
+            </div>
+            <!-- Formulário de Ataque -->
+            <form action="{{ url_for('attack') }}" method="POST" class="mt-4 flex flex-wrap items-center space-x-3">
+                <input type="text" name="target_username" placeholder="Usuário Alvo" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 rounded w-48 focus:outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="number" name="quantity" placeholder="Unidades para enviar" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 rounded w-48 focus:outline-none focus:ring-2 focus:ring-yellow-500" min="1" required>
+                <button type="submit" class="bg-yellow-500 text-white p-3 rounded hover:bg-yellow-600 transition duration-200">Atacar</button>
+            </form>
+        </div>
+        
+        <!-- Relatórios de Ataque -->
+        <div id="attack-reports" class="mb-6 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-3 text-gray-100">Relatórios de Ataque</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-600">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="border border-gray-600 p-3 text-gray-200">Atacante</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Defensor</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Unidades</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Status</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Resultado</th>
+                            <th class="border border-gray-600 p-3 text-gray-200">Tempo Restante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in attacks %}
+                        <tr class="hover:bg-gray-700">
+                            <td class="border border-gray-600 p-3">{{ u[1] }}</td>
+                            <td class="border border-gray-600 p-3">{{ u[2] }}</td>
+                            <td class="border border-gray-600 p-3">{{ u[3] }}</td>
+                            <td class="border border-gray-600 p-3">{{ u[7] }}</td>
+                            <td class="border border-gray-600 p-3">{{ u[8] or 'Pendente' }}</td>
+                            <td class="border border-gray-600 p-3" data-attack-time="{{ u[6] }}">{{ u[6] - current_time }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modal de Exploração -->
+        <div id="explore-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-100">Explorar <span id="explore-zone-name"></span></h3>
+                <p class="text-gray-300 mb-2">Dificuldade: <span id="explore-difficulty"></span></p>
+                <p class="text-gray-300 mb-4">Loot: <span id="explore-loot"></span></p>
+                <input type="hidden" id="explore-zone-id">
+                <input type="number" id="explore-quantity" placeholder="Unidades para enviar" class="border border-gray-600 bg-gray-700 text-gray-200 p-3 mb-4 w-full rounded focus:outline-none focus:ring-2 focus:ring-yellow-500" min="1" required>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeExploreModal()" class="bg-gray-600 text-white p-2 rounded hover:bg-gray-700 transition duration-200">Cancelar</button>
+                    <button onclick="exploreZone()" class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition duration-200">Explorar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
